@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="23A344" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="Products" representedClassName="Products" syncable="YES">
+        <attribute name="ammount" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="calories" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="substitutes" optional="YES" attributeType="Transformable" customClassName="[Products]"/>
+        <relationship name="productrecipe" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Recipe" inverseName="recipeproduct" inverseEntity="Recipe"/>
+        <relationship name="productshop" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Shops" inverseName="shopproduct" inverseEntity="Shops"/>
+    </entity>
+    <entity name="Recipe" representedClassName="Recipe" syncable="YES">
+        <attribute name="difficulty" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="ingredients" optional="YES" attributeType="String"/>
+        <attribute name="instruction" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="preparationTime" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="recipeproduct" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Products" inverseName="productrecipe" inverseEntity="Products"/>
+    </entity>
+    <entity name="Shops" representedClassName="Shops" syncable="YES">
+        <attribute name="localization" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="products" optional="YES" attributeType="Transformable" customClassName="[Products]"/>
+        <relationship name="shopproduct" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Products" inverseName="productshop" inverseEntity="Products"/>
+    </entity>
+</model>
