@@ -1,55 +1,65 @@
 import SwiftUI
 import CoreData
-import UIKit
-
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    
+
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Recipe.name, ascending: true)],
         animation: .default)
     private var recipes: FetchedResults<Recipe>
-    
+
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Product.name, ascending: true)],
         animation: .default)
     private var products: FetchedResults<Product>
-    
+
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Shop.name, ascending: true)],
         animation: .default)
     private var shops: FetchedResults<Shop>
-    
-    @State private var path = NavigationPath()
+
     @State private var showingAddRecipe = false
     @State private var editingRecipe: Recipe? = nil
+    @State private var showRandomDetail = false
+    @State private var selectedRecipe: Recipe? = nil
 
-    
     var body: some View {
-        NavigationStack(path: $path) {
-            List {
-                ForEach(recipes) { recipe in
-                    HStack {
-                        NavigationLink(value: recipe) {
-                            VStack(alignment: .leading) {
-                                Text(recipe.name ?? "")
-                                    .font(.headline)
-                                Text("\(recipe.preparationTime) min | \(recipe.difficulty)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
+        NavigationStack {
+            ZStack {
+                List {
+                    ForEach(recipes) { recipe in
+                        HStack {
+                            NavigationLink {
+                                RecipeDetailView(recipe: recipe)
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(recipe.name ?? "")
+                                        .font(.headline)
+                                    Text("\(recipe.preparationTime) min | \(recipe.difficulty)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
                             }
+                            Spacer()
+                            Button {
+                                editingRecipe = recipe
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
                         }
-                        Spacer()
-                        Button {
-                            editingRecipe = recipe
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
                     }
+                    .onDelete(perform: deleteRecipe)
                 }
-                .onDelete(perform: deleteRecipe)
+
+                NavigationLink(
+                    destination: selectedRecipe.map { RecipeDetailView(recipe: $0) },
+                    isActive: $showRandomDetail
+                ) {
+                    EmptyView()
+                }
+                .hidden()
             }
             .navigationTitle("Przepisy")
             .toolbar {
@@ -61,15 +71,11 @@ struct ContentView: View {
                     }
                 }
             }
-            
             .sheet(isPresented: $showingAddRecipe) {
                 AddRecipeView()
             }
             .sheet(item: $editingRecipe) { recipe in
                 EditRecipeView(recipe: recipe)
-            }
-            .navigationDestination(for: Recipe.self) { recipe in
-                RecipeDetailView(recipe: recipe)
             }
             .onAppear {
                 if products.isEmpty {
@@ -79,22 +85,22 @@ struct ContentView: View {
                     addShops()
                 }
             }
-            // Overlay z detekcją potrząśnięcia
             .overlay(
                 ShakeDetectingView {
                     showRandomRecipe()
                 }
-                .frame(width: 0, height: 0) // Ukryty
+                .frame(width: 0, height: 0)
             )
         }
     }
-    
+
     private func showRandomRecipe() {
-        guard let randomRecipe = recipes.randomElement() else { return }
-        // Programowo przechodzimy do szczegółów losowego przepisu
-        path.append(randomRecipe)
+        if let random = recipes.randomElement() {
+            selectedRecipe = random
+            showRandomDetail = true
+        }
     }
-    
+
     private func deleteRecipe(offsets: IndexSet) {
         withAnimation {
             offsets.map { recipes[$0] }.forEach(viewContext.delete)
@@ -105,25 +111,21 @@ struct ContentView: View {
             }
         }
     }
-    
+
     private func addProducts() {
         withAnimation {
-            let newProduct1 = Product(context: viewContext)
-            newProduct1.name = "Marchewka"
-            newProduct1.calories = 41
-            
-            let newProduct2 = Product(context: viewContext)
-            newProduct2.name = "Mleko"
-            newProduct2.calories = 42
-            
-            let newProduct3 = Product(context: viewContext)
-            newProduct3.name = "Cukier"
-            newProduct3.calories = 387
-            
-            let newProduct4 = Product(context: viewContext)
-            newProduct4.name = "Maka"
-            newProduct4.calories = 364
-            
+            let productData = [
+                ("Marchewka", 41),
+                ("Mleko", 42),
+                ("Cukier", 387),
+                ("Maka", 364)
+            ]
+            for (name, calories) in productData {
+                let newProduct = Product(context: viewContext)
+                newProduct.name = name
+                newProduct.calories = Int16(calories)
+            }
+
             do {
                 try viewContext.save()
             } catch {
@@ -132,39 +134,43 @@ struct ContentView: View {
             }
         }
     }
-    
+
     private func addShops() {
         withAnimation {
-            let newShop1 = Shop(context: viewContext)
-            newShop1.name = "ABC"
-            newShop1.latitude = 51.250672
-            newShop1.longitude = 22.575633
-            for product in products {
-                newShop1.addToProducts(product)
+            let shop1 = Shop(context: viewContext)
+            shop1.name = "ABC"
+            shop1.latitude = 51.250672
+            shop1.longitude = 22.575633
+            products.forEach { shop1.addToProducts($0) }
+
+            let shop2 = Shop(context: viewContext)
+            shop2.name = "Groszek"
+            shop2.latitude = 51.250700
+            shop2.longitude = 22.595800
+            if products.count > 2 {
+                shop2.addToProducts(products[2])
+                shop2.addToProducts(products[3])
             }
-            
-            let newShop2 = Shop(context: viewContext)
-            newShop2.name = "Groszek"
-            newShop2.latitude = 51.250700
-            newShop2.longitude = 22.595800
-            newShop2.addToProducts(products[2])
-            newShop2.addToProducts(products[3])
-            
-            let newShop3 = Shop(context: viewContext)
-            newShop3.name = "Dino"
-            newShop3.latitude = 51.250841
-            newShop3.longitude = 22.575923
-            newShop3.addToProducts(products[0])
-            newShop3.addToProducts(products[1])
-            
-            let newShop4 = Shop(context: viewContext)
-            newShop4.name = "Stokrotka"
-            newShop4.latitude = 51.250841
-            newShop4.longitude = 22.575923
-            newShop4.addToProducts(products[0])
-            newShop4.addToProducts(products[1])
-            newShop4.addToProducts(products[2])
-            
+
+            let shop3 = Shop(context: viewContext)
+            shop3.name = "Dino"
+            shop3.latitude = 51.250841
+            shop3.longitude = 22.575923
+            if products.count > 1 {
+                shop3.addToProducts(products[0])
+                shop3.addToProducts(products[1])
+            }
+
+            let shop4 = Shop(context: viewContext)
+            shop4.name = "Stokrotka"
+            shop4.latitude = 51.250841
+            shop4.longitude = 22.575923
+            if products.count > 2 {
+                shop4.addToProducts(products[0])
+                shop4.addToProducts(products[1])
+                shop4.addToProducts(products[2])
+            }
+
             do {
                 try viewContext.save()
             } catch {
@@ -175,10 +181,9 @@ struct ContentView: View {
     }
 }
 
-// Pomocniczy UIViewController do wykrywania potrząśnięcia
 class ShakeDetectingViewController: UIViewController {
     var onShake: (() -> Void)?
-    
+
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         if motion == .motionShake {
             onShake?()
@@ -186,15 +191,14 @@ class ShakeDetectingViewController: UIViewController {
     }
 }
 
-// SwiftUI wrapper UIViewControllerRepresentable do detekcji shake
 struct ShakeDetectingView: UIViewControllerRepresentable {
     var onShake: () -> Void
-    
+
     func makeUIViewController(context: Context) -> ShakeDetectingViewController {
         let controller = ShakeDetectingViewController()
         controller.onShake = onShake
         return controller
     }
-    
+
     func updateUIViewController(_ uiViewController: ShakeDetectingViewController, context: Context) {}
 }
